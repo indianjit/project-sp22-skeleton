@@ -25,6 +25,22 @@ def make_small_instance() -> Instance:
     """
     cities = []
     # YOUR CODE HERE
+    def hub(x, y):
+        # will add cities around a hub, will append 5 points to cities
+        p1 = Point(x,y)
+        p2 = Point(x+3, y)
+        p3 = Point(x, y+3)
+        p4 = Point(x-3, y)
+        p5 = Point(x, y-3)
+        cities.append(p1)
+        cities.append(p2)
+        cities.append(p3)
+        cities.append(p4)
+        cities.append(p5)
+    hub(6, 6)
+    hub(18, 9)
+    hub(9, 18)
+    hub(10,18)
     return Size.SMALL.instance(cities)
 
 
@@ -38,6 +54,27 @@ def make_medium_instance() -> Instance:
     """
     cities = []
     # YOUR CODE HERE
+    def hub(x, y):
+            # will add cities around a hub, will append 5 points to cities
+            p1 = Point(x,y)
+            p2 = Point(x+3, y)
+            p3 = Point(x, y+3)
+            p4 = Point(x-3, y)
+            p5 = Point(x, y-3)
+            cities.append(p1)
+            cities.append(p2)
+            cities.append(p3)
+            cities.append(p4)
+            cities.append(p5)
+    def small(h, k): 
+        hub(h + 6, k + 6)
+        hub(h + 18, k + 9)
+        hub(h + 9, k + 18)
+        hub(h + 10, k + 18)
+    small(0,0)
+    small(25, 0)
+    hub(40, 40)
+    hub(40, 41)
     return Size.MEDIUM.instance(cities)
 
 
@@ -51,6 +88,14 @@ def make_large_instance() -> Instance:
     """
     cities = []
     # YOUR CODE HERE
+    i = 1
+    x = 1
+    while i < 200:
+        cities.append(Point(x, 5))
+        cities.append(Point(x, 8))
+        cities.append(Point(x, 12))
+        x += 1
+        i += 3
     return Size.LARGE.instance(cities)
 
 
