@@ -1,0 +1,26 @@
+taking the physics approach rn.
+Imagine the towers to be charged particles that are attracted to cities but repelled by other towers.
+Towers that hold control of more cities are considered to be more massive.
+The mass of a tower is only dependent on the number of cities for which it is the sole provider.
+Once a tower becomes a provider to 0 cities, it goes away.
+once a city is covered by a tower it no longer attracts other towers?
+The ideas of mass may not make a lot of sense.
+The forces acting on the towers should match up with the problem specification.
+Towers should only feel a repulsive force when they are within the penalty radius of another tower.
+Towers should only feel attraction towards uncovered towers?
+Towers can have some sort of binding energy with the cities?
+The binding energy is gained by joining with a city as well.
+The binding energy is only for towers for which it is the sole provider.
+Towers are free to move around as long as they do not leave any of their coresponding towers uncovered.
+The above rule can be enforced through the binding energy.
+How many towers to have?
+Where should the towers be at when initialized?
+How are towers created and destroyed?
+
+Is there ever a situation where having more towers is better?
+
+
+Greedy:
+for each point calculate how many cities a tower could serve if placed there.
+Place tower at highest place and decrement all the corresponding places.
+Repeat till all cities covered.
