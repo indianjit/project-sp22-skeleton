@@ -1,3 +1,17 @@
+The algorithm which I used to generate outputs was based on the greedy approach which I incrementaly improved on
+I started with a simple greedy approach.
+Then I took into account the penalty and made it so that the greedy broke ties by picking the point with the lowest penalty.
+Then I took it one step above! For each tower, I came up with a list of points at which the tower could be placed
+while still keeping all of the cities which it is the sole provider for within its radius.
+If one of these wiggle points also had a lower penalty associated with it, then the tower was moved to that location.
+since this moved the towers, new opprotunities for improvemnt rose and so did the process again.
+
+
+
+
+
+
+
 taking the physics approach rn.
 Imagine the towers to be charged particles that are attracted to cities but repelled by other towers.
 Towers that hold control of more cities are considered to be more massive.
@@ -24,3 +38,24 @@ Greedy:
 for each point calculate how many cities a tower could serve if placed there.
 Place tower at highest place and decrement all the corresponding places.
 Repeat till all cities covered.
+
+When computing the height map for it, made the mistake of computing height map by iterating through all possible points.
+Instead should have iterated through the uncovered cities and made the height map that way.
+
+Greedy method was easy enough to get working.
+
+Considerate Greedy:
+a greedy method that takes into consideration the penalty radius
+the idea is to have another map overlaid on top of the current one.
+This map takes into consideration the penalty radius for the towers.
+When given a choice between two places with the same citiesCovered, it will choose the location which will
+lead to a decreased penalty radius
+
+It is a good idea to keep everything in terms of points instead of tuples
+
+What can I do to make it slightly better?
+so at the end of the algorithm, towers are going to have a bit of wiggle room.
+Wiggle room being locations that they can move to 
+such that they still provide service to all their cities but hopefuly the cost is less.
+
+for the wiggle room idea if a possible wiggle room increases the number of cities underControl, then it should also be taken!
