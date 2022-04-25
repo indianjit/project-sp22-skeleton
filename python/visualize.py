@@ -35,7 +35,6 @@ def solution_file(args):
 def output_file(args):
     if args.output == "-":
         return StdoutFileWrapper()
-
     return Path(args.output).open("w")
 
 

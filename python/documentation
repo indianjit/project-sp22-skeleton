@@ -6,6 +6,9 @@ while still keeping all of the cities which it is the sole provider for within i
 If one of these wiggle points also had a lower penalty associated with it, then the tower was moved to that location.
 since this moved the towers, new opprotunities for improvemnt rose and so did the process again.
 
+I tried varius versions of greedy algorithm and the final version did best even though it took longest.
+I only used my laptop.
+
 
 
 

@@ -23,6 +23,7 @@ from solve import solve_naive
 from solve import greedy
 from solve import greedyConsiderate
 from solve import greedyIterative
+from solve import randIterative
 
 
 class Size(enum.Enum):
@@ -37,14 +38,14 @@ def solver(size: Size, instance: Instance) -> Solution:
     #return solve_naive(instance)
     #return greedy(instance)
     #return greedyConsiderate(instance)
-    return greedyIterative(instance)
+    #return greedyIterative(instance)
     
     if size == Size.SMALL:
-        return greedy(instance)
+        return randIterative(instance)
     elif size == Size.MEDIUM:
-        return greedy(instance)
+        return solve_naive(instance)
     elif size == Size.LARGE:
-        return greedy(instance)
+        return solve_naive(instance)
 
 
 # You shouldn't need to modify anything below this line.
