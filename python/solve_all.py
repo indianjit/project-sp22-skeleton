@@ -14,16 +14,17 @@ import os
 from pathlib import Path
 from threading import BoundedSemaphore
 
+import requests
+
 from instance import Instance
 from solution import Solution
 
 # Modify this line to import your own solvers.
 # YOUR CODE HERE
 from solve import solve_naive
-from solve import greedy
-from solve import greedyConsiderate
-from solve import greedyIterative
-from solve import randIterative
+
+from solve import solveIt
+from solve import solveItIter
 
 
 class Size(enum.Enum):
@@ -40,10 +41,11 @@ def solver(size: Size, instance: Instance) -> Solution:
     #return greedyConsiderate(instance)
     #return greedyIterative(instance)
     
+    
     if size == Size.SMALL:
-        return randIterative(instance)
-    elif size == Size.MEDIUM:
         return solve_naive(instance)
+    elif size == Size.MEDIUM:
+        return solveItIter(instance, 100)
     elif size == Size.LARGE:
         return solve_naive(instance)
 

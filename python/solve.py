@@ -14,6 +14,9 @@ from point import Point
 from pathlib import Path
 from typing import Callable, Dict
 
+import cProfile
+import pstats
+
 from instance import Instance
 from solution import Solution
 from file_wrappers import StdinFileWrapper, StdoutFileWrapper
@@ -25,445 +28,318 @@ def solve_naive(instance: Instance) -> Solution:
         towers=instance.cities,
     )
 
+def solveIt(instance: Instance) -> Solution:
+    # profile = cProfile.Profile()
+    # profile.enable()
 
+    # for each pixel, have how many cities would be covered if a tower was placed there
+    # go through each of the points and if placing a tower there would cover at least 1 city, consider it
+    # when iterating, if a better option is found, only pick it with some probability 
+    # which is dependent on the integral of the heightMap
 
-def greedyFailed(instance: Instance) -> Solution:
-    r = instance.coverage_radius
-    maxCord = instance.D - 1
-    uncovered = set(instance.cities)
-    towerLocations = []
-    heightMap = dict()
-    def numUncoveredCitiesInServiceRadius(centerx, centery):
-            answer = 0
-            for x in range(max(0, centerx - r), min(maxCord, centerx + r)):
-                for y in range(max(0, centery - r), min(maxCord, centery + r)):
-                    potentialTowerCityDist = math.sqrt((x - centerx)**2 + (centery - y)**2)
-                    # creating a new point below, might not register as a point in the set uncovered even if there cause new object
-                    if potentialTowerCityDist <= r and Point(x, y) in uncovered:
-                        answer += 1
-            return answer
-    def updateHeightMap(minX, maxX, minY, maxY):
-            for x in range(minX, maxX + 1):
-                for y in range(minY, maxY + 1):
-                    heightMap[(x,y)] = numUncoveredCitiesInServiceRadius(x, y)
-    def helper(key):
-            return heightMap[key]
-    def removeCitiesFromUncovered(towerx, towery):
-            for x in range(max(0, towerx - r), min(maxCord, towerx + r)):
-                for y in range(max(0, towery - r), min(maxCord, towery + r)):
-                    potentialTowerCityDist = math.sqrt((x - towerx)**2 + (towery - y)**2)
-                    # creating a new point below, might not register as a point in the set uncovered even if there cause new object
-                    if potentialTowerCityDist <= r and Point(x, y) in uncovered:
-                        # these are all uncovered cities with in service radius of tower
-                        uncovered.discard(Point(x,y))
-    while len(uncovered) > 0 :
-        # intializes the height map
-        updateHeightMap(0, maxCord, 0, maxCord)
-        # find the heighest point in the height map
-        heighestPoint = max(heightMap.keys(), key = helper)
-        towerLocations.append(Point(heighestPoint[0], heighestPoint[1]))
-        print(heightMap[(heighestPoint[0], heighestPoint[1])])
-        print(len(uncovered))
-        removeCitiesFromUncovered(heighestPoint[0], heighestPoint[1])
-    return Solution(
-        instance = instance,
-        towers = towerLocations,
-    )
+    # once a point is picked, update the height map 3 * r around where tower is placed
+    # figure out all places where a tower can be moved to and still cover all of its cities
+    # if in any of these places, the penalty is less. Move there
 
-
-
-def toTuples(thingy):
-    tups = []
-    for point in thingy:
-        tups.append((point.x, point.y))
-    return tups
-
-def toPoints(tups):
-    points = []
-    for tup in tups:
-        points.append(Point(tup[0], tup[1]))
-    return points
-
-
-def greedy(instance: Instance) -> Solution:
-    r = instance.coverage_radius
-    maxCord = instance.D - 1
-    uncovered = set(instance.cities)
-    towerLocations = []
-    heightMap = dict()
-
-    def updateHeightMap():
-        for x in range(0, maxCord + 1):
-            for y in range(0, maxCord + 1):
-                heightMap[Point(x,y)] = 0
-        for city in uncovered:
-            for x in range(max(0, city.x - r), min(maxCord, city.x + r) + 1):
-                for y in range(max(0, city.y - r), min(maxCord, city.y + r) + 1):
-                    dist = math.sqrt((x - city.x)**2 + (city.y - y)**2)
-                    if dist <= r:
-                        heightMap[Point(x,y)] += 1                
-    def findHeightestPoint():
-        def helper(key):
-                return heightMap[key]
-        return max(heightMap.keys(), key = helper)
-    def removeCitiesFromUncovered(towerPoint):
-        towerx = towerPoint.x
-        towery = towerPoint.y
-        for x in range(max(0, towerx - r), min(maxCord, towerx + r) + 1):
-            for y in range(max(0, towery - r), min(maxCord, towery + r) + 1):
-                potentialTowerCityDist = math.sqrt((x - towerx)**2 + (towery - y)**2)
-                if potentialTowerCityDist <= r and Point(x, y) in uncovered:
-                    # these are all uncovered cities with in service radius of tower
-                    uncovered.remove(Point(x,y))
-    while len(uncovered) > 0 :
-        updateHeightMap()
-        heighestPoint = findHeightestPoint()
-        towerLocations.append(heighestPoint)
-        highVal = heightMap[heighestPoint]
-        removeCitiesFromUncovered(heighestPoint)
-    
-    return Solution(
-        instance = instance,
-        towers = towerLocations,
-    )
-
-
-
-def greedyConsiderate(instance: Instance) -> Solution:
-    r = instance.coverage_radius
-    p = instance.penalty_radius
-    maxCord = instance.D - 1
-    uncovered = set(instance.cities)
-    towerPoints = []
-    heightMap = dict()
-    penaltyMap = dict()
+    # remove any towers which uniquely cover no cities.
+    maxCords = instance.D - 1
+    storedPoints = []
+    for y in range(0, maxCords + 1):
+        for x in range(0, maxCords + 1):
+            storedPoints.append(Point(x, y))
     
 
-    def iterateHelper(minX, maxX, minY, maxY):
-        # returns all the points within the range
-        possiblePoints = set()
-        for x in range(max(0, minX), min(maxCord, maxX) + 1):
-            for y in range(max(0, minY), min(maxCord, maxY) + 1):
-                possiblePoints.add(Point(x, y))
-        return possiblePoints
-
-    allPoints = iterateHelper(0, maxCord, 0, maxCord)
-
-    def updateHeightMap():
-        for point in allPoints:
-            heightMap[point] = 0
-        for city in uncovered:
-            possiblePoints = iterateHelper(city.x - r, city.x + r, city.y - r, city.y + r)
-            for point in possiblePoints:
-                dist = math.sqrt((point.x - city.x)**2 + (city.y - point.y)**2)
-                if dist <= r:
-                    heightMap[point] += 1
-
-    def updatePenaltyMap():
-        for point in allPoints:
-            penaltyMap[point] = 0 
-        for tower in towerPoints:
-            penaltyPoints = iterateHelper(tower.x - p, tower.x + p, tower.y - p, tower.y + p)
-            for point in penaltyPoints:
-                penaltyMap[point] += 1
-    
-    def choosePoint():
-        mostCitiesInRadius = max(heightMap.values())
-        maxPoints = []
-        for point in allPoints:
-            if heightMap[point] >= mostCitiesInRadius:
-                maxPoints.append(point)
-        def helper(point):
-            return penaltyMap[point]
-        return min(maxPoints, key = helper)
-    def removeCitiesFromUncovered(towerPoint):
-        towerx = towerPoint.x
-        towery = towerPoint.y
-        pointsInRange = iterateHelper(towerx - r, towerx + r, towery - r, towery + r)
-        for point in pointsInRange:
-            dist = math.sqrt((point.x - towerx)**2 + (point.y - towery)**2)
-            if dist <= r and point in uncovered:
-                # these are all uncovered cities with in service radius of tower
-                uncovered.remove(point)
-    
-    while len(uncovered) > 0:
-        updateHeightMap()
-        updatePenaltyMap()
-        chosenPoint = choosePoint()
-        towerPoints.append(chosenPoint)
-        highVal = heightMap[chosenPoint]
-        removeCitiesFromUncovered(chosenPoint)
-    
-    return Solution(
-        instance = instance,
-        towers = towerPoints,
-    )
-
-
-
-def generateSol(instance: Instance) -> Solution:
-    r = instance.coverage_radius
-    maxCord = instance.D - 1
-    uncovered = set(instance.cities)
-    towerPoints = set()
-    heightMap = dict()
-
-    def iterateHelper(minX, maxX, minY, maxY):
-        # returns all the points within the range
-        possiblePoints = set()
-        for x in range(max(0, minX), min(maxCord, maxX) + 1):
-            for y in range(max(0, minY), min(maxCord, maxY) + 1):
-                possiblePoints.add(Point(x, y))
-        return possiblePoints
-    allPoints = iterateHelper(0, maxCord, 0, maxCord)
-    
-    def pointsInRadius(centerPoint, radius):
-        maybeValidPoints = iterateHelper(centerPoint.x - radius, centerPoint.x + radius, centerPoint.y - radius, centerPoint.y + radius)
-        validPoints = []
-        for point in maybeValidPoints:
-            dist = math.sqrt((point.x - centerPoint.x)**2 + (point.y - centerPoint.y)**2) 
-            if dist <= radius:
-                validPoints.append(point)
-        return validPoints
-
-    def updateHeightMap():
-        for point in allPoints:
-            heightMap[point] = 0
-        for city in uncovered:
-            for point in pointsInRadius(city, r):
-                heightMap[point] += 1
-                
-
-    def allValidPlacements():
-        # returns a set of all points which if a tower was placed there,
-        # that tower would have at least one city within its service area
+    storedCalc = dict()
+    def pointsInRadius(centerPoint: Point, radius: int):
+        dictVal = storedCalc.get((centerPoint, radius))
+        if dictVal != None:
+            # we already seen this point
+            return dictVal
+        cx = centerPoint.x
+        cy = centerPoint.y
         validPoints = set()
-        for point in allPoints:
-            if heightMap[point] >= 1:
-                validPoints.add(point)
+        for x in range(max(cx - radius, 0), min(cx + radius, maxCords) + 1):
+            for y in range(max(cy - radius, 0), min(cy + radius, maxCords) + 1):
+                point = storedPoints[x + y * (maxCords+1)]
+                if centerPoint.distance_obj(point) <= radius:
+                    validPoints.add(point)
+        
+        storedCalc[(centerPoint, radius)] = validPoints
         return validPoints
 
-    def removeCitiesFromUncovered(towerPoint):
-        for point in pointsInRadius(towerPoint, r):
-            if point in uncovered:
-                uncovered.remove(point)
-    
-
-    def addTower(towerPoint):
-        towerPoints.add(towerPoint)
-        removeCitiesFromUncovered(towerPoint)
-        
-
-    while len(uncovered) > 0:
-        updateHeightMap()
-        chosenPoint = random.choice(list(allValidPlacements()))
-        addTower(chosenPoint)
-    
-    return Solution(
-        instance = instance,
-        towers = list(towerPoints),
-    )
-
-
-
-def iterateOnTowers(instance: Instance, solutionGenFunc) -> Solution:
     r = instance.coverage_radius
     p = instance.penalty_radius
-    maxCord = instance.D - 1
     allCityPoints = set(instance.cities)
-    uncovered = set(instance.cities)
+    towerPoints = set()
+    
+    cityTowers = dict() # {city: [tower1, tower2...], ...}
     heightMap = dict()
     penaltyMap = dict()
-    coverageMap = dict() # {CityPoint: numTowersFromWhichCityGetsPower}
-    initHeightMap = dict()
-    
-    def iterateHelper(minX, maxX, minY, maxY):
-        # returns all the points within the range
-        possiblePoints = set()
-        for x in range(max(0, minX), min(maxCord, maxX) + 1):
-            for y in range(max(0, minY), min(maxCord, maxY) + 1):
-                possiblePoints.add(Point(x, y))
-        return possiblePoints
+    allPoints = pointsInRadius(Point(0,0), 2*maxCords + 10)
+    # initializing the dictionaries
+    for point in allCityPoints:
+        cityTowers[point] = []
+    for point in allPoints:
+        heightMap[point] = 0
+        penaltyMap[point] = 0
 
-    def pointsInRadius(centerPoint, radius):
-        maybeValidPoints = iterateHelper(centerPoint.x - radius, centerPoint.x + radius, centerPoint.y - radius, centerPoint.y + radius)
-        validPoints = []
-        for point in maybeValidPoints:
-            dist = math.sqrt((point.x - centerPoint.x)**2 + (point.y - centerPoint.y)**2) 
-            if dist <= radius:
-                validPoints.append(point)
-        return validPoints
-    allPoints = iterateHelper(0, maxCord, 0, maxCord)
 
-    
-    def myCities(towerPoint):
-        # given a towerPoint will return a list of cityPoints which recieve power from only that tower
-        myCityPoints = []
-        for point in pointsInRadius(towerPoint, r):
-            if point in allCityPoints and coverageMap[point] <= 1:
-                myCityPoints.append(point)
-        return myCityPoints
+    def isCity(point: Point):
+        # return weather a point is a cityPoint
+        return point in allCityPoints
+
+    def isTower(point: Point):
+        # returns weather a point is a towerPoint 
+        return (point in towerPoints)
+
+    def isUniqueCity(city):
+        if city not in allCityPoints:
+            raise Exception("point is not a city")
         
-    def myRivals(towerPoint):
-        # given a towerPoint will return all towerPoints which are within penalty radius of towerPoint
-        myRivalPoints = []
-        for point in pointsInRadius(towerPoint, p):
-            if point in towerPoints:
-                myRivalPoints.append(point)
-        return myRivalPoints
+        if len(cityTowers[city]) <= 1:
+            return True
+        else:
+            return False
 
-    def updateCoverageMap():
-        for point in allPoints:
-            coverageMap[point] = None
-        for city in allCityPoints:
-            coverageMap[city] = 0
-        for city in allCityPoints:
-            for point in pointsInRadius(city, r):
-                if point in towerPoints:
-                    coverageMap[city] += 1
+    def getMyCities(tower):
+        if tower not in towerPoints:
+            raise Exception("no tower located at that point")
 
-    def updateHeightMap():
-        for point in allPoints:
-            heightMap[point] = 0
-        for city in uncovered:
-            for point in pointsInRadius(city, r):
-                heightMap[point] += 1
+        myCities = set()
 
-    def updatePenaltyMap():
-        for point in allPoints:
-            penaltyMap[point] = 0 
-        for towerPoint in towerPoints:
-            for point in pointsInRadius(towerPoint, p):
-                penaltyMap[point] += 1
-    
-    def getWigglePoints(towerPoint):
-        # given a towerPoint will return a list of all of the points which the tower can be moved to while 
-        # leaving all of the cities still covered.
-        myResponsibilities = myCities(towerPoint)
-        wigglePoints = [towerPoint]
-        def isValid(wigglePoint):
-            uncoveredResponsibilities = myResponsibilities.copy()
-            for point in pointsInRadius(wigglePoint, r):
-                if point in uncoveredResponsibilities:
-                    # meaning the point is a city
-                    uncoveredResponsibilities.remove(point)
-            if len(uncoveredResponsibilities) == 0:
-                return True
+        for point in pointsInRadius(tower, r):
+            if isCity(point) and isUniqueCity(point):
+                myCities.add(point)
+        return myCities
+        
+    def updateHeightMap(cities: list[Point], adding: bool):
+        for cityPoint in cities:
+            if isCity(cityPoint):
+                pass
             else:
-                return False
+                raise Exception("non city point passed into updateHeightMap")
+        
+        if adding:
+            updateVal = 1
+        else:
+            updateVal = -1
 
-        possibleWigglePoints = pointsInRadius(towerPoint, 2 * r)
-        for point in possibleWigglePoints:
-            if isValid(point):
-                wigglePoints.append(point)
-        return wigglePoints
+        for city in cities:
+            for point in pointsInRadius(city, r):              
+                heightMap[point] = heightMap[point] + updateVal
 
-    def wiggleTowers():
-        newTowerPoints = set()
-        for towerPoint in towerPoints:
-            wigglePoints = getWigglePoints(towerPoint)
-            # wiggle points has len 0 if the solution would still be valid of tower was removed
-            numBestRivals = len(myRivals(towerPoint))
-            bestPoint = towerPoint
-            for wigglePoint in wigglePoints:
-                numNewRivals = len(myRivals(wigglePoint))
-                if numNewRivals < numBestRivals:
-                    # we found a betterPlace!
-                    numBestRivals = numNewRivals
-                    bestPoint = wigglePoint
-            newTowerPoints.add(bestPoint)
-        return newTowerPoints
-
-    updateHeightMap()
+    updateHeightMap(list(allCityPoints), True)
     initHeightMap = heightMap.copy()
 
-    towerPoints = solutionGenFunc(instance).towers
 
-    sol = Solution( instance = instance, towers = list(towerPoints))
-    if not sol.valid():
-        print(toTuples(towerPoints))
 
-    i = 0
-    numIterations = 10
+    def updatePenaltyMap(towerPoint: Point, adding: bool):
+        if isTower(towerPoint):
+            pass
+        else:
+            raise Exception("non tower point passed into updatePenaltyMap")
+    
+        if adding:
+            updateVal = 1
+        else:
+            updateVal = -1
 
-    while i < numIterations:
-        updateCoverageMap()
-        updatePenaltyMap()
-        prevTowerPoints = towerPoints.copy() 
-        towerPoints = wiggleTowers()
-        print("itering", i)
+        for point in pointsInRadius(towerPoint, p):
+            penaltyMap[point] = penaltyMap[point] + updateVal
+            
+    def chooseTowerPlacement():
+        pool = []
+        for point in allPoints:
+            i = heightMap[point]
+            i = i ** 2
+            while i > 0:
+                pool.append(point)
+                i -= 1
+        chosenPoint = random.choice(pool)
+        j = 100
 
-        # gets rid of un needed points
+        while chosenPoint in towerPoints and j > 0:
+            chosenPoint = random.choice(pool)
+            j -= 1
 
-        for tower in towerPoints.copy():
-            if len(myCities(tower)) == 0:
-                print("removed")
-                towerPoints.remove(tower)
-                updateCoverageMap()
-        updatePenaltyMap()
+        return chosenPoint
+
+    def chooseTowerProb():
+        prob = (1/(maxCords ** 2)) * 5000  
+        for point in allPoints:
+            if heightMap[point] >= 1:
+                chosenPoint = point
+                break
+        for point in allPoints:
+            if heightMap[point] >= heightMap[chosenPoint]:
+                if random.randint(0, 100) < prob:
+                    chosenPoint = point
+        return chosenPoint
+
+
+
+    def updateCityTowers(towerPoint: Point, adding: bool):
+        for point in pointsInRadius(towerPoint, r):
+            if isCity(point):
+                cityTowerz = cityTowers[point]
+                if adding:
+                    cityTowerz.append(point)
+                else:
+                    if point not in cityTowerz:
+                        raise Exception("tower was not connected to city which it is being removed from")
+                    cityTowerz.remove(point)
+
+    def getUncoveredCities():
+        uncoveredCities = set()
+        for city in allCityPoints:
+            if len(cityTowers[city]) <= 0:
+                uncoveredCities.add(city)
+        return uncoveredCities
+
+
+
+    def addTower(towerPoint: Point):
+        if towerPoint in towerPoints:
+            #raise Exception("attempting to place tower at a place where there is already a tower")
+            print("already tower here not gonna do anything")
+            return 
         
+        towerPoints.add(towerPoint)
+        updateHeightMap(list(getMyCities(towerPoint)), False)
+        updatePenaltyMap(towerPoint, True)
+        updateCityTowers(towerPoint, True)
+
+        
+    def removeTower(point):
+        if point in towerPoints:
+            pass
+        else:
+            raise Exception("attempting to remove tower where there is no tower")
+        if len(getMyCities(point)) >= 1:
+            raise Exception("removing tower will leave some cities uncovered")
+
+
+        updatePenaltyMap(point, False)
+        towerPoints.remove(point)
+        updateCityTowers(point, False)
+
+    def moveTower(startingPoint, endingPoint):
+        if startingPoint not in towerPoints:
+            raise Exception("no tower at starting point")
+        if endingPoint in towerPoints:
+            #raise Exception("locating to a place with a tower already there")
+            print("tower already there.. not gonna do anything")
+            return
+
+        addTower(endingPoint)
+        removeTower(startingPoint)
+
+    def getWigglePoints(towerPoint):
+        circles = []
+        myCities = getMyCities(towerPoint)
+        if len(myCities) == 0:
+            return set()
+        for city in myCities:
+            circles.append(pointsInRadius(city, r))
+        
+        if len(circles) == 0:
+            raise Exception("circles should have something in it")
+        
+        a = circles[0]
+        for circle in circles:
+            a = set.intersection(a, circle)
+    
+        wigglePoints = a
+        if len(wigglePoints) <= 0:
+            raise Exception("somehow no wiggle points?!?!")
+
+        
+        return wigglePoints
+    
+    def wiggle(towerPoint):
+        if towerPoint not in towerPoints:
+            raise Exception("not tower, cant wiggle")
+        bestPenalty = penaltyMap[towerPoint]
+        bestPoint = towerPoint
+
+        wigglePoints = getWigglePoints(towerPoint)
+
+        if len(wigglePoints) == 0:
+            return
+
+        for wigglePoint in wigglePoints:
+            wigglePenalty = penaltyMap[wigglePoint]
+            if wigglePenalty < bestPenalty or (initHeightMap[wigglePoint] > initHeightMap[bestPoint] and wigglePenalty == bestPenalty):
+                bestPenalty = wigglePenalty
+                bestPoint = wigglePoint
+        
+        if bestPoint != towerPoint:
+            moveTower(towerPoint, bestPoint)
+    
+    while len(getUncoveredCities()) > 0:
+        towerPlacement = chooseTowerPlacement()
+        addTower(towerPlacement)
+
+    maxIterations = 100
+    i = maxIterations
+    while i > 0:
+        profile = cProfile.Profile()
+        profile.enable()
+
+
+        prevTowerPoints = towerPoints.copy()
+        
+        for tower in towerPoints:
+            wiggle(tower)
+        
+        for tower in towerPoints.copy():
+            if len(getMyCities(tower)) == 0:
+                removeTower(tower)
+
         if prevTowerPoints == towerPoints:
             break
-        i += 1
+        i -= 1
 
-    return Solution(
-        instance = instance,
-        towers = list(towerPoints),
+
+
+    answer = Solution(
+        instance=instance,
+        towers=list(towerPoints),
     )
 
+    # profile.disable()
+    # ps = pstats.Stats(profile)
+    # ps.sort_stats('cumtime') 
+    # ps.print_stats()
 
 
-def greedyIterative(instance: Instance) -> Solution:
-    return iterateOnTowers(instance, greedyConsiderate)
+    return answer
 
-def randIterative(instance: Instance) -> Solution:
-    i = 0
-    numIterations = 20
-    bestSol = iterateOnTowers(instance, generateSol)
-    bestPenalty = bestSol.penalty()
-    while i < numIterations:
-        print("on iteration", i)
-        currSol = iterateOnTowers(instance, generateSol)
+def solveItIter(instance: Instance, iters, target) -> Solution:
+    # remove line below for future
+    # number 4
+    # my curr score : 1933
+    i = iters
+    bestSol = solveIt(instance)
+    bestPenalty = bestSol.penalty() 
+    print("init: ", bestPenalty)
+    print("target: ", target)
+
+    while i > 0 and bestPenalty > target:
+        currSol = solveIt(instance)
         currPenalty = currSol.penalty()
-        print(currSol.valid())
-        if (not bestSol.valid()) or (currPenalty < bestPenalty and currSol.valid()):
-            print("foundNewBest")
-            bestSol = currSol
-            bestPenalty = currPenalty
-        i += 1
-    print("towers:", toTuples(bestSol.towers))
-    print("citiess:", toTuples(bestSol.instance.cities))
-    print(bestPenalty)
-    return bestSol
-
-def randBubble(instance: Instance) -> Solution:
-    i = 0
-    numIterations = 300
-    bestSol = generateSol(instance)
-    bestPenalty = bestSol.penalty()
-    while i < numIterations:
-        print("on iteration", i)
-        currSol =  generateSol(instance)
-        currPenalty = currSol.penalty()
-        print(currSol.valid())
         if currPenalty < bestPenalty:
-            bestSol = currSol
             bestPenalty = currPenalty
-        i += 1
-    print("towers:", toTuples(bestSol.towers))
-    print("citiess:", toTuples(bestSol.instance.cities))
-    print(bestPenalty)
-    return bestSol
+            bestSol = currSol
+        i -= 1
 
+    return bestSol
 
 
 SOLVERS: Dict[str, Callable[[Instance], Solution]] = {
     "naive": solve_naive,
-    "greedy": greedy,
-    "greedyConsiderate": greedyConsiderate,
-    "greedyIterative": greedyIterative,
-    "randIterative": randIterative,
-    "randBubble": randBubble
+    "solveIt": solveIt,
+    "solveItIter": solveItIter
 }
 
 
